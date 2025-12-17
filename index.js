@@ -31,7 +31,9 @@ mongoose.connect('mongodb://127.0.0.1:27017/eco_tours',{useNewUrlParser:true,Use
 app.use('/auth', require('./router/Auth'));
 app.use('/usuarios', require('./router/Usuarios'));
 app.use('/clientes', require('./router/Clientes'));
-
+app.use('/agenda', require('./router/Agenda'));
+app.use('/chat', require('./router/Chat'));
+app.use('/mensaje', require('./router/Mensaje'));
 app.listen(port,()=>{
     console.log('El servidor esta activo y escuchando por el puerto',port);
 });
