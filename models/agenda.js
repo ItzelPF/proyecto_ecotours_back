@@ -3,30 +3,33 @@ const Schema = mongoose.Schema;
 
 const AgendaSchema = new Schema({
     codigo_cita: Number,
-    // Relación con cliente
-    cliente: {
+
+    usuario: {
         type: Schema.Types.ObjectId,
-        ref: 'Cliente',
-        required: true
-    },
-    titulo:String,
-    descripcion: String,
-    fecha: {
-        type: Date,
+        ref: 'Usuario',
         required: true
     },
 
-    hora_inicio: {
-        type: String, // ejemplo: "10:30"
-        required: true
+    cliente: {
+        type: Schema.Types.ObjectId,
+        ref: 'Cliente',
+        required: false
     },
-    hora_fin:String,
+
+    titulo: String,
+    descripcion: String,
+    fecha: Date,
+    hora_inicio: String,
+    hora_fin: String,
+
     estado: {
         type: String,
         enum: ['pendiente', 'confirmada', 'cancelada', 'realizada'],
         default: 'pendiente'
     },
+
     notas: String
 });
+
 
 module.exports = mongoose.model('Agenda', AgendaSchema);

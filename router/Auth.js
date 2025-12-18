@@ -45,7 +45,7 @@ router.post('/login', async (req, res) => {
             {
                 id: usuarioDB._id,
                 rol: usuarioDB.rol,
-                codigo_usuario: usuarioDB.codgio_usuario
+                codigo_usuario: usuarioDB.codigo_usuario // ✅ CORRECTO
             },
             'CLAVE_SECRETA',
             { expiresIn: '8h' }
@@ -56,7 +56,7 @@ router.post('/login', async (req, res) => {
             mensaje: 'Login correcto',
             token,
             usuario: {
-                codgio_usuario: usuarioDB.codgio_usuario,
+                codigo_usuario: usuarioDB.codigo_usuario, 
                 nombre: usuarioDB.nombre,
                 apellido_paterno: usuarioDB.apellido_paterno,
                 apellido_materno: usuarioDB.apellido_materno,
@@ -66,7 +66,7 @@ router.post('/login', async (req, res) => {
         });
 
     } catch (error) {
-        console.log(error);
+        console.error(error);
         res.json({
             estado: false,
             mensaje: 'Error en el login'
