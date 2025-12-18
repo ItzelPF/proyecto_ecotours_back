@@ -45,7 +45,7 @@ router.post('/login', async (req, res) => {
             {
                 id: usuarioDB._id,
                 rol: usuarioDB.rol,
-                codigo_usuario: usuarioDB.codigo_usuario // ✅ CORRECTO
+                codigo_usuario: usuarioDB.codigo_usuario 
             },
             'CLAVE_SECRETA',
             { expiresIn: '8h' }

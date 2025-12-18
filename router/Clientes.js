@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Cliente = require('../models/cliente');
 
-// Obtrener todos
+// Obtener todos
 router.get('/todos',async(req, res)=>{
     try{
         const arrayClientesDB = await Cliente.find();

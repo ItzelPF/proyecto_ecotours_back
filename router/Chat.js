@@ -1,87 +1,149 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const Chat = require('../models/chat');
+const Chat = require("../models/chat");
+const Usuario = require("../models/usuario");
 
-
-// Obtener todos los chats
-router.get('/todos', async (req, res) => {
+// OBTENER CHATS DE UN USUARIO
+router.get("/", async (req, res) => {
     try {
-        const arrayChatsDB = await Chat.find()
-            .populate('participantes', 'nombre apellido_paterno rol');
-        res.json(arrayChatsDB);
+        const { codigo_usuario } = req.query;
+
+        if (!codigo_usuario) {
+            return res.status(400).json({ mensaje: "codigo_usuario requerido" });
+        }
+
+        const usuario = await Usuario.findOne({ codigo_usuario });
+        if (!usuario) {
+            return res.status(404).json({ mensaje: "Usuario no encontrado" });
+        }
+
+        const chats = await Chat.find({
+            participantes: usuario._id
+        })
+            .populate("participantes", "codigo_usuario nombre apellido_paterno rol")
+            .sort({ updatedAt: -1 });
+
+        res.json(chats);
     } catch (error) {
         console.log(error);
+        res.status(500).json({ mensaje: "Error al obtener chats" });
     }
 });
 
-
-// Obtener un chat por codigo_chat
-router.get('/:id', async (req, res) => {
-    const id = req.params.id;
+// OBTENER CHAT POR ID
+router.get("/:id", async (req, res) => {
     try {
-        const chatDB = await Chat.find({ codigo_chat: id })
-            .populate('participantes', 'nombre apellido_paterno rol');
-        res.json(chatDB);
+        const chat = await Chat.findById(req.params.id)
+            .populate("participantes", "codigo_usuario nombre apellido_paterno rol");
+
+        if (!chat) {
+            return res.status(404).json({ mensaje: "Chat no encontrado" });
+        }
+
+        res.json(chat);
     } catch (error) {
         console.log(error);
+        res.status(500).json({ mensaje: "Error al obtener chat" });
     }
 });
 
-
-// Crear un chat
-router.post('/', async (req, res) => {
-    const body = req.body;
+// CREAR O REUTILIZAR CHAT PRIVADO
+router.post("/privado", async (req, res) => {
     try {
-        await Chat.create(body);
-        res.json({ estado: "Chat creado correctamente" });
-    } catch (error) {
-        console.log(error);
-    }
-});
+        const { codigo_usuario_origen, codigo_usuario_destino } = req.body;
 
-
-// Eliminar un chat
-router.delete('/:id', async (req, res) => {
-    const id = req.params.id;
-    try {
-        const chatDB = await Chat.findOneAndDelete({ codigo_chat: id });
-        if (chatDB) {
-            res.json({
-                estado: true,
-                mensaje: "Chat eliminado correctamente"
-            });
-        } else {
-            res.json({
-                estado: false,
-                mensaje: "No se encontró el chat"
+        if (!codigo_usuario_origen || !codigo_usuario_destino) {
+            return res.status(400).json({
+                mensaje: "codigo_usuario_origen y codigo_usuario_destino son obligatorios"
             });
         }
+
+        if (codigo_usuario_origen === codigo_usuario_destino) {
+            return res.status(400).json({
+                mensaje: "No puedes crear un chat contigo mismo"
+            });
+        }
+
+        const usuarioOrigen = await Usuario.findOne({
+            codigo_usuario: codigo_usuario_origen
+        });
+
+        const usuarioDestino = await Usuario.findOne({
+            codigo_usuario: codigo_usuario_destino
+        });
+
+        if (!usuarioOrigen || !usuarioDestino) {
+            return res.status(404).json({
+                mensaje: "Usuario no encontrado"
+            });
+        }
+
+        let chat = await Chat.findOne({
+            tipo: "privado",
+            participantes: {
+                $all: [usuarioOrigen._id, usuarioDestino._id]
+            }
+        });
+
+        if (!chat) {
+            chat = await Chat.create({
+                tipo: "privado",
+                participantes: [usuarioOrigen._id, usuarioDestino._id],
+                creado_por: usuarioOrigen._id
+            });
+        }
+        const chatPopulado = await Chat.findById(chat._id)
+            .populate(
+                "participantes",
+                "codigo_usuario nombre apellido_paterno apellido_materno rol"
+            );
+
+        res.json(chatPopulado);
+
     } catch (error) {
-        console.log(error);
+        console.error("ERROR /chat/privado:", error);
+        res.status(500).json({
+            mensaje: "Error al crear o recuperar chat privado"
+        });
     }
 });
 
 
-// Actualizar chat
-router.put('/:id', async (req, res) => {
-    const id = req.params.id;
-    const body = req.body;
+// CREAR CHAT GRUPAL
+router.post("/grupo", async (req, res) => {
     try {
-        await Chat.findOneAndUpdate(
-            { codigo_chat: id },
-            body,
-            { useFindAndModify: false }
-        );
-        res.json({
-            estado: true,
-            mensaje: "Chat actualizado correctamente"
+        const { codigo_usuario_creador, nombre_chat, participantes } = req.body;
+
+        if (!codigo_usuario_creador || !nombre_chat || !Array.isArray(participantes)) {
+            return res.status(400).json({ mensaje: "Datos inválidos" });
+        }
+
+        const usuarios = await Usuario.find({
+            codigo_usuario: { $in: participantes }
         });
+
+        const creador = await Usuario.findOne({ codigo_usuario: codigo_usuario_creador });
+
+        if (!creador) {
+            return res.status(404).json({ mensaje: "Creador no encontrado" });
+        }
+
+        const ids = usuarios.map(u => u._id);
+
+        if (!ids.some(id => id.equals(creador._id))) {
+            ids.push(creador._id);
+        }
+
+        const chat = await Chat.create({
+            tipo: "grupo",
+            nombre_chat,
+            participantes: ids
+        });
+
+        res.json(chat);
     } catch (error) {
         console.log(error);
-        res.json({
-            estado: false,
-            mensaje: "No se pudo actualizar el chat"
-        });
+        res.status(500).json({ mensaje: "Error al crear grupo" });
     }
 });
 
